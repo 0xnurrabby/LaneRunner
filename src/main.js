@@ -157,7 +157,6 @@ function shortAddr(a) {
   return `${a.slice(0, 6)}…${a.slice(-4)}`;
 }
 
-
 let fcUsername = null;
 let fcFid = null;
 async function getFcUsername() {
@@ -202,13 +201,10 @@ async function displayNameFor(addr) {
   return shortAddr(addr);
 }
 
-
 function fmtPts(n) {
   const s = (typeof n === "bigint" ? n : BigInt(n || 0)).toString();
   return s.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
-
-
 
 function renderStatus() {
   if (!account) {
@@ -245,7 +241,10 @@ async function ensureBase() {
   const chainId = await p.request({ method: "eth_chainId", params: [] });
   if (chainId === BASE_CHAIN_ID_HEX) return;
   try {
-    await p.request({ method: "wallet_switchEthereumChain", params: [{ chainId: BASE_CHAIN_ID_HEX }] });
+    await p.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: BASE_CHAIN_ID_HEX }]
+    });
   } catch {
     throw new Error("Please switch your wallet to Base Mainnet (0x2105).");
   }
@@ -258,7 +257,9 @@ function weekStartUtcMs(now = Date.now()) {
   const d = new Date(now);
   const day = d.getUTCDay(); // 0 Sun..6 Sat
   const diffToMon = (day + 6) % 7; // days since Monday
-  const mon = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - diffToMon, 0, 0, 0, 0));
+  const mon = new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - diffToMon, 0, 0, 0, 0)
+  );
   return mon.getTime();
 }
 
@@ -610,6 +611,9 @@ async function commitWeeklyOnchain() {
       args: [ACTION_WEEKLY_ADD, payload]
     });
 
+    // ✅ IMPORTANT: append builder attribution suffix to calldata
+    const dataWithSuffix = `${data}${dataSuffix.slice(2)}`;
+
     const params = {
       version: "2.0.0",
       from: account,
@@ -619,17 +623,19 @@ async function commitWeeklyOnchain() {
         {
           to: CONTRACT,
           value: "0x0",
-          data
+          data: dataWithSuffix
         }
       ],
-      capabilities: {}};
+      capabilities: {}
+    };
+
+    // submitted becomes an object so we can carry txHash when available
+    let submitted = null; // { txHash: string | null } | null
 
     // MUST attempt wallet_sendCalls first (EIP-5792)
-    let submitted = false;
     try {
       const res = await p.request({ method: "wallet_sendCalls", params: [params] });
-      submitted = true;
-      // Some providers return a callId; show it for debug
+      submitted = { txHash: null };
       if (res) toast("Transaction submitted", 1800);
     } catch (e) {
       const msg = String(e?.message || "").toLowerCase();
@@ -643,7 +649,7 @@ async function commitWeeklyOnchain() {
         const params2 = { ...params };
         delete params2.capabilities;
         await p.request({ method: "wallet_sendCalls", params: [params2] });
-        submitted = true;
+        submitted = { txHash: null };
       } catch {
         // fallback to eth_sendTransaction (some wallets)
         // estimate gas to avoid providers that require it
@@ -652,7 +658,7 @@ async function commitWeeklyOnchain() {
           const est = await publicClient.estimateGas({
             account,
             to: CONTRACT,
-            data
+            data: dataWithSuffix
           });
           gas = toHex(est);
         } catch {}
@@ -664,22 +670,37 @@ async function commitWeeklyOnchain() {
               from: account,
               to: CONTRACT,
               value: "0x0",
-              data,
+              data: dataWithSuffix,
               ...(gas ? { gas } : {})
             }
           ]
         });
-        submitted = true;
-        if (txHash) toast("Transaction submitted", 1800);
+
+        submitted = { txHash: txHash || null };
+        if (txHash) toast(`Tx: ${txHash.slice(0, 10)}…`, 2200);
+        else toast("Transaction submitted", 1800);
       }
     }
 
     if (!submitted) throw new Error("Transaction not submitted");
 
-    // On successful submit: zero bank (points are now committed)
+    // ✅ If we got a txHash (eth_sendTransaction path), confirm receipt before zeroing bank
+    if (submitted.txHash) {
+      toast("Waiting for confirmation…", 2200);
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: submitted.txHash });
+      if (receipt.status !== "success") throw new Error("Transaction reverted");
+    }
+
+    // ✅ Now safe to zero bank
     profile.bankPoints = 0;
     persistProfile();
-    toast("Committed on-chain! Updating leaderboard…", 2200);
+
+    toast(
+      submitted.txHash
+        ? "Committed on-chain! Updating leaderboard…"
+        : "Submitted to wallet. If it doesn't appear on-chain, try again.",
+      2600
+    );
 
     // refresh leaderboard if sheet is open
     if (isSheetOpen()) {
@@ -890,8 +911,9 @@ async function openLeaderboardsView() {
     const weeklyTop = topN(weeklySorted, 100);
     const allTop = topN(allTimeSorted, 100);
 
-    const weeklyIndex =
-      account ? weeklySorted.findIndex((x) => x.addr.toLowerCase() === account.toLowerCase()) : -1;
+    const weeklyIndex = account
+      ? weeklySorted.findIndex((x) => x.addr.toLowerCase() === account.toLowerCase())
+      : -1;
     const yourWeeklyRank = weeklyIndex >= 0 ? weeklyIndex + 1 : null;
     const yourWeeklyPts = weeklyIndex >= 0 ? weeklySorted[weeklyIndex].pts : 0n;
 
@@ -965,7 +987,6 @@ async function openLeaderboardsView() {
       e?.message ? `<br/><span class="mono">${String(e.message)}</span>` : ""
     }</div>`;
   }
-
 }
 
 // =====================================================
@@ -1103,10 +1124,10 @@ function update(dt) {
   for (const c of game.coins) {
     const cx = laneCenterX(g, c.lane);
     const cy = c.y;
-    const dx = (carRect.x + carRect.w / 2) - cx;
-    const dy = (carRect.y + carRect.h / 2) - cy;
+    const dx = carRect.x + carRect.w / 2 - cx;
+    const dy = carRect.y + carRect.h / 2 - cy;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < (carRect.w * 0.45 + c.r)) {
+    if (dist < carRect.w * 0.45 + c.r) {
       profile.coins += 1;
       persistProfile();
       continue;
@@ -1213,7 +1234,7 @@ function render() {
   drawRoundedRect(carX, carY, carW, carH, 12);
   ctx.fill();
   ctx.fillStyle = "rgba(0,0,0,0.30)";
-  drawRoundedRect(carX + carW * 0.18, carY + carH * 0.18, carW * 0.64, carH * 0.20, 7);
+  drawRoundedRect(carX + carW * 0.18, carY + carH * 0.18, carW * 0.64, carH * 0.2, 7);
   ctx.fill();
   ctx.fillStyle = "rgba(255,255,255,0.35)";
   ctx.beginPath();
@@ -1230,7 +1251,11 @@ function render() {
     ctx.font = "700 18px system-ui, -apple-system, Segoe UI, Roboto";
     ctx.fillText("Crash!", g.roadX + 34, g.roadY + g.roadH * 0.38 + 34);
     ctx.font = "500 14px system-ui, -apple-system, Segoe UI, Roboto";
-    ctx.fillText("Tap Save to bank points, or tap here to restart", g.roadX + 34, g.roadY + g.roadH * 0.38 + 60);
+    ctx.fillText(
+      "Tap Save to bank points, or tap here to restart",
+      g.roadX + 34,
+      g.roadY + g.roadH * 0.38 + 60
+    );
 
     // clickable restart area
     els.c.style.cursor = "pointer";
