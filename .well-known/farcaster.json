@@ -1,17 +1,17 @@
 {
   "accountAssociation": {
-    "header": "  ",
-    "payload": "  ",
-    "signature": "  "
+    "header": "eyJmaWQiOjE0MTU3NzUsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHhDYTZjMERBNDRFMjBCMkYwMUY5YTYwYjE0RjkzNTE3NUQ1NkU5MWNBIn0",
+    "payload": "eyJkb21haW4iOiJsYW5lLXJ1bm5lci1waW5rLnZlcmNlbC5hcHAifQ",
+    "signature": "krjXr4TO9hcyRaWikHTflY+x93XWUhLxlzfqnfhFxZBpEltHeu5dbqRC+TFt7B0Zj/qRubfoosuj7rCK9WjFmBw="
   },
   "frame": {
     "version": "1",
     "name": "Nurrabby Lane Runner",
-    "iconUrl": "https://nurrabby.com/assets/icon-512.png",
-    "homeUrl": "https://nurrabby.com/",
-    "imageUrl": "https://nurrabby.com/assets/embed-3x2.png",
+    "iconUrl": "https://lane-runner-pink.vercel.app/assets/icon-512.png",
+    "homeUrl": "https://lane-runner-pink.vercel.app/",
+    "imageUrl": "https://lane-runner-pink.vercel.app/assets/embed-3x2.png",
     "buttonTitle": "Play",
-    "splashImageUrl": "https://nurrabby.com/assets/splash-200.png",
+    "splashImageUrl": "https://lane-runner-pink.vercel.app/assets/splash-200.png",
     "splashBackgroundColor": "#0f0f14"
   }
 }
