@@ -6,7 +6,7 @@ import { Attribution } from "https://esm.sh/ox/erc8021";
  * NON-NEGOTIABLE: builder code MUST match your Base.dev Builder Code.
  * This project uses "nurrabby" as the assumed code.
  */
-const BUILDER_CODE = "nurrabby";
+const BUILDER_CODE = "bc_nkm4ufdx";
 
 const CONTRACT = "0xB331328F506f2D35125e367A190e914B1b6830cF";
 const BASE_CHAIN_ID_HEX = "0x2105";
