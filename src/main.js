@@ -480,7 +480,7 @@ function topN(list, n) {
 
 async function getActionLogsChunked(fromBlock, toBlock) {
   // ✅ bigger chunk => fewer eth_getLogs calls => less 429
-  const step = 180000n;
+  const step = 10n;
   const out = [];
 
   for (let from = fromBlock; from <= toBlock; ) {
