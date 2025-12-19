@@ -520,21 +520,37 @@ async function getActionLogsChunked(fromBlock, toBlock) {
 }
 
 async function fetchLeaderboard() {
-  // Scan a reasonable window of blocks to keep it fast.
-  // ~7 days ≈ 250k-320k blocks (Base block time ~2s). We use 350k buffer.
+  // 1️⃣ get latest block
   const latest = await publicClient.getBlockNumber();
-  const fromBlock = latest > 350000n ? latest - 350000n : 0n;
 
+  // 2️⃣ load checkpoint
+  const saved = localStorage.getItem("w3r_lb_fromBlock");
+  let fromBlock = saved
+    ? BigInt(saved)
+    : latest > 2000n
+    ? latest - 2000n
+    : 0n;
+
+  // 3️⃣ safety: never scan huge range on free tier
+  const MAX_BACK = 5000n;
+  if (latest - fromBlock > MAX_BACK) {
+    fromBlock = latest - MAX_BACK;
+  }
+
+  // 4️⃣ fetch logs (Alchemy-safe chunks handled inside)
   const logs = await getActionLogsChunked(fromBlock, latest);
 
+  // 5️⃣ SAVE checkpoint ✅ (এইটাই তুমি জিজ্ঞেস করছিলে)
+  localStorage.setItem("w3r_lb_fromBlock", String(latest));
+
+  // 6️⃣ leaderboard aggregation
   const weekStart = weekStartUtcMs();
   const prevWeekStart = weekStart - 7 * 24 * 60 * 60 * 1000;
 
-  const perWeek = new Map(); // weekStartMs -> Map(addr -> pts)
+  const perWeek = new Map();
   const allTime = new Map();
 
   for (const l of logs) {
-    // decode event
     const decoded = decodeEventLog({
       abi: [ACTION_LOGGED_EVENT],
       data: l.data,
@@ -544,55 +560,39 @@ async function fetchLeaderboard() {
     const user = decoded.args.user;
     const dataHex = decoded.args.data;
 
-    // Our encoding: abi.encode(uint256 points, uint256 weekStartMs)
     let points = 0n;
     let wk = 0n;
+
     try {
-      // Backward compatible payload decoding:
-      // v1: abi.encode(uint256 points, uint256 weekStartMs)
-      // v2: abi.encode(uint256 points, uint256 weekStartMs, uint256 fid)
-      try {
-        const [p, w, _fid] = decodeAbiParameters(
-          [{ type: "uint256" }, { type: "uint256" }, { type: "uint256" }],
-          dataHex
-        );
-        points = p;
-        wk = w;
-      } catch {
-        const [p, w] = decodeAbiParameters(
-          [{ type: "uint256" }, { type: "uint256" }],
-          dataHex
-        );
-        points = p;
-        wk = w;
-      }
+      const [p, w] = decodeAbiParameters(
+        [{ type: "uint256" }, { type: "uint256" }],
+        dataHex
+      );
+      points = p;
+      wk = w;
     } catch {
-      // ignore foreign payloads
       continue;
     }
 
-    const prevAll = allTime.get(user) || 0n;
-    allTime.set(user, prevAll + points);
+    // all-time
+    allTime.set(user, (allTime.get(user) || 0n) + points);
 
+    // weekly
     const wkNum = Number(wk);
     const wkMap = perWeek.get(wkNum) || new Map();
-    const prevW = wkMap.get(user) || 0n;
-    wkMap.set(user, prevW + points);
+    wkMap.set(user, (wkMap.get(user) || 0n) + points);
     perWeek.set(wkNum, wkMap);
   }
-
-  const weeklySorted = sortAll(perWeek.get(weekStart) || new Map());
-  const prevWeekSorted = sortAll(perWeek.get(prevWeekStart) || new Map());
-  const allTimeSorted = sortAll(allTime);
 
   return {
     weekStart,
     prevWeekStart,
-    weeklySorted,
-    prevWeekSorted,
-    allTimeSorted
+    weeklySorted: sortAll(perWeek.get(weekStart) || new Map()),
+    prevWeekSorted: sortAll(perWeek.get(prevWeekStart) || new Map()),
+    allTimeSorted: sortAll(allTime)
   };
 }
+
 
 // =====================================================
 // On-chain Commit: add BankPoints to Weekly leaderboard
