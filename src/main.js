@@ -420,21 +420,52 @@ function convertCoinsToBank() {
 // LEADERBOARD (public): computed from on-chain ActionLogged events
 // - Weekly: sum points where data.weekStart == current weekStart
 // - All-time: sum everything
-// - Live: poll and refresh
 // =====================================================
-const publicClient = createPublicClient({
-  chain: {
-    id: 8453,
-    name: "Base",
-    network: "base",
-    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-    rpcUrls: {
-      default: { http: ["https://mainnet.base.org"] },
-      public: { http: ["https://mainnet.base.org"] }
-    }
-  },
-  transport: http("https://base-mainnet.g.alchemy.com/v2/ToX5nv2UiwNedbaxuGWzr")
-});
+
+// ✅ RPC rotation to avoid 429
+const RPCS = [
+  "https://mainnet.base.org",
+  "https://base.publicnode.com",
+  "https://1rpc.io/base",
+  "https://base.llamarpc.com"
+];
+
+let rpcIndex = 0;
+
+function makePublicClient() {
+  return createPublicClient({
+    chain: {
+      id: 8453,
+      name: "Base",
+      network: "base",
+      nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+      rpcUrls: {
+        default: { http: RPCS },
+        public: { http: RPCS }
+      }
+    },
+    transport: http(RPCS[rpcIndex], {
+      retryCount: 2,
+      retryDelay: ({ attempt }) => Math.min(1200, 250 * (attempt + 1))
+    })
+  });
+}
+
+let publicClient = makePublicClient();
+
+function rotateRpc() {
+  rpcIndex = (rpcIndex + 1) % RPCS.length;
+  publicClient = makePublicClient();
+}
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function isRateLimitError(e) {
+  const msg = String(e?.message || "").toLowerCase();
+  return msg.includes("429") || msg.includes("rate limit") || msg.includes("over rate limit");
+}
 
 function sortAll(map) {
   return [...map.entries()]
@@ -447,10 +478,13 @@ function topN(list, n) {
 }
 
 async function getActionLogsChunked(fromBlock, toBlock) {
-  const step = 50000n; // keep RPC calls small to avoid rate-limit / payload issues
+  // ✅ bigger chunk => fewer eth_getLogs calls => less 429
+  const step = 180000n;
   const out = [];
+
   for (let from = fromBlock; from <= toBlock; ) {
     const to = from + step > toBlock ? toBlock : from + step;
+
     try {
       const part = await publicClient.getLogs({
         address: CONTRACT,
@@ -462,7 +496,14 @@ async function getActionLogsChunked(fromBlock, toBlock) {
       out.push(...part);
       from = to + 1n;
     } catch (e) {
-      // If a chunk fails, retry with a smaller window once
+      // ✅ If rate-limited, rotate RPC + backoff and retry same chunk
+      if (isRateLimitError(e)) {
+        rotateRpc();
+        await sleep(900);
+        continue;
+      }
+
+      // Existing fallback split (keep)
       if (to - from > 5000n) {
         const mid = from + (to - from) / 2n;
         const left = await getActionLogsChunked(from, mid);
@@ -797,6 +838,7 @@ function openMainMenu() {
     openMainMenu();
   });
   $("#btnHow").addEventListener("click", openHowView);
+
   // Use pointerdown for snappy mobile interaction inside overlays
   const commitBtn = $("#btnCommit");
   commitBtn.addEventListener(
@@ -837,7 +879,12 @@ function openHowView() {
   $("#goBoards").addEventListener("click", openLeaderboardsView);
 }
 
+let boardsInFlight = false;
+
 async function openLeaderboardsView() {
+  if (boardsInFlight) return;
+  boardsInFlight = true;
+
   openSheet(
     "Leaderboards",
     `
@@ -937,6 +984,8 @@ async function openLeaderboardsView() {
     $("#boards").innerHTML = `<div class="copy">Could not load on-chain logs. Try Refresh. ${
       e?.message ? `<br/><span class="mono">${String(e.message)}</span>` : ""
     }</div>`;
+  } finally {
+    boardsInFlight = false;
   }
 }
 
