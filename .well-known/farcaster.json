@@ -1,0 +1,17 @@
+{
+  "accountAssociation": {
+    "header": "  ",
+    "payload": "  ",
+    "signature": "  "
+  },
+  "frame": {
+    "version": "1",
+    "name": "Nurrabby Lane Runner",
+    "iconUrl": "https://nurrabby.com/assets/icon-512.png",
+    "homeUrl": "https://nurrabby.com/",
+    "imageUrl": "https://nurrabby.com/assets/embed-3x2.png",
+    "buttonTitle": "Play",
+    "splashImageUrl": "https://nurrabby.com/assets/splash-200.png",
+    "splashBackgroundColor": "#0f0f14"
+  }
+}
