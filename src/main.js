@@ -424,6 +424,7 @@ function convertCoinsToBank() {
 
 // ✅ RPC rotation to avoid 429
 const RPCS = [
+  "https://base-mainnet.g.alchemy.com/v2/ToX5nv2UiwNedbaxuGWzr",
   "https://mainnet.base.org",
   "https://base.publicnode.com",
   "https://1rpc.io/base",
