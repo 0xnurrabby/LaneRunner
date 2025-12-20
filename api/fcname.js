@@ -1,13 +1,13 @@
 // Vercel Serverless Function: /api/fcname
-// Returns farcaster username for an ETH address using Neynar.
-// Output: { name: "username.farcaster.eth" } or { name: null }
+// address -> "username.farcaster.eth" (via Neynar)
+// Response: { name: string|null }
 
 module.exports = async function handler(req, res) {
   try {
     const key = process.env.NEYNAR_API_KEY;
     const addr = String(req.query.addr || "").toLowerCase();
 
-    if (!key || !addr || !addr.startsWith("0x")) {
+    if (!key || !addr || !addr.startsWith("0x") || addr.length !== 42) {
       return res.status(200).json({ name: null });
     }
 
@@ -22,13 +22,13 @@ module.exports = async function handler(req, res) {
     if (!r.ok) return res.status(200).json({ name: null });
 
     const j = await r.json();
-    const u = j?.users?.[0];
+    const u = j?.users?.[0] || null;
+
     const name = u?.username ? `${u.username}.farcaster.eth` : null;
 
-    // small cache header (optional)
-    res.setHeader("cache-control", "s-maxage=120, stale-while-revalidate=600");
+    res.setHeader("cache-control", "s-maxage=60, stale-while-revalidate=300");
     return res.status(200).json({ name });
-  } catch (e) {
+  } catch {
     return res.status(200).json({ name: null });
   }
 };
