@@ -124,7 +124,6 @@ function toast(msg, ms = 1800) {
   toast._t = setTimeout(() => els.toast.classList.remove("show"), ms);
 }
 
-
 // =====================================================
 // Audio + Haptics (coin sfx, background music, vibration)
 // Notes:
@@ -140,13 +139,15 @@ const AUDIO = {
 
 function setupAudio() {
   if (AUDIO.coinPool.length) return;
+
   // Coin SFX pool (allows rapid consecutive plays)
   for (let i = 0; i < 5; i++) {
     const a = new Audio("/assets/coin.mp3");
     a.preload = "auto";
-    a.volume = 0.40;
+    a.volume = 0.20; // ✅ 50% lower than 0.40
     AUDIO.coinPool.push(a);
   }
+
   // Background music
   AUDIO.bgm = new Audio("/assets/bgm.mp3");
   AUDIO.bgm.preload = "auto";
@@ -157,6 +158,7 @@ function setupAudio() {
 async function ensureAudioUnlocked() {
   setupAudio();
   if (AUDIO.unlocked) return;
+
   try {
     // Attempt a silent play/pause to unlock audio on iOS/Android.
     const a = AUDIO.coinPool[0];
@@ -167,20 +169,17 @@ async function ensureAudioUnlocked() {
     a.muted = false;
     AUDIO.unlocked = true;
   } catch {
-    // still locked; will try again on next gesture
     AUDIO.unlocked = false;
   }
 
-  if (AUDIO.unlocked) {
-    // Start bgm once unlocked and game is running
-    startBgm();
-  }
+  if (AUDIO.unlocked) startBgm();
 }
 
 function startBgm() {
   setupAudio();
   if (!AUDIO.unlocked || !AUDIO.bgm) return;
   if (!AUDIO.bgm.paused) return;
+
   AUDIO.bgm.currentTime = 0;
   AUDIO.bgm.play().catch(() => {});
 }
@@ -201,6 +200,7 @@ function playCoinSfx() {
     a.play().catch(() => {});
   } catch {}
 }
+
 function vibrate(pattern) {
   // 1) Standard Web Vibration API (works mostly on Android Chrome, some in-app browsers)
   try {
@@ -209,12 +209,10 @@ function vibrate(pattern) {
     }
   } catch {}
 
-  // 2) Farcaster miniapp SDK fallback (if supported by the host)
-  // Not all versions support this—so try/catch safe
+  // 2) Farcaster miniapp SDK fallback (best effort)
   try {
     const p = Array.isArray(pattern) ? pattern[0] : pattern;
     if (sdk?.actions?.haptics?.impact) {
-      // light/medium/heavy based on duration
       const type = p >= 60 ? "medium" : "light";
       sdk.actions.haptics.impact(type);
       return true;
@@ -228,6 +226,13 @@ function vibrate(pattern) {
   return false;
 }
 
+// ✅ Missing functions added
+function hapticTap() {
+  vibrate(12);
+}
+function crashVibe() {
+  vibrate([55, 30, 55]);
+}
 
 // =====================================================
 // Mini App READY (MANDATORY)
@@ -279,7 +284,6 @@ function _toStr(v) {
 async function getFcUsername() {
   if (fcUsername !== null) return fcUsername;
   try {
-    // different SDK versions expose context differently; try a few safe paths
     const ctx =
       (sdk && sdk.context) ||
       (sdk && sdk.actions && (await sdk.actions.getContext?.())) ||
@@ -310,7 +314,6 @@ async function displayNameFor(addr) {
     }
   } catch {}
 
-  // If this is the connected wallet, show Farcaster username when available
   if (account && addr && addr.toLowerCase() === account.toLowerCase()) {
     const u = await getFcUsername();
     if (u) return `@${u}`;
@@ -394,12 +397,9 @@ function hoursToMs(h) {
 
 // =====================================================
 // Off-chain Profile: banked points + coins + decay
-// - Save adds RunScore -> BankPoints immediately (no tx)
-// - BankPoints decay: every 15 minutes, -25% (multiplicative)
-// - Convert coins: 1 coin = 10 points, adds to BankPoints
 // =====================================================
 const DECAY_INTERVAL_MS = 15 * 60 * 1000;
-const DECAY_MULT = 0.75; // keep 75%, cut 25%
+const DECAY_MULT = 0.75;
 
 const profile = {
   bankPoints: Number(localStorage.getItem("w3r_bank") || "0"),
@@ -440,8 +440,6 @@ function applyDecay(now = Date.now()) {
 }
 
 function computeBoost(now = Date.now()) {
-  // Rhythm: every 2-6 hours you get a short boost.
-  // If ready, activate for 5 minutes.
   if (!profile.boostReadyAt) {
     profile.boostReadyAt = now + hoursToMs(randInt(2, 6));
     persistProfile();
@@ -478,12 +476,12 @@ function boostCountdownText(now = Date.now()) {
 }
 
 // =====================================================
-// GAME: 4-lane runner (strictly inside lanes)
+// GAME: 4-lane runner
 // =====================================================
 const game = {
   started: false,
   over: false,
-  lane: 1, // 0..3
+  lane: 1,
   runScore: 0,
   t: 0,
   speed: 1.0,
@@ -506,7 +504,6 @@ function resetRun() {
   game.lastSpawnAt = 0;
   game.lastCoinAt = 0;
 
-  // Resume background music if already unlocked
   startBgm();
 }
 resetRun();
@@ -537,107 +534,9 @@ function convertCoinsToBank() {
 }
 
 // =====================================================
-// LEADERBOARD (public): computed from on-chain ActionLogged events
-// - Weekly: sum points where data.weekStart == current weekStart
-// - All-time: sum everything
+// LEADERBOARD API
 // =====================================================
-
-// ✅ RPC rotation to avoid 429
-const RPCS = [
-  "https://base-mainnet.g.alchemy.com/v2/ToX5nv2UiwNedbaxuGWzr",
-  "https://mainnet.base.org",
-  "https://base.publicnode.com",
-  "https://1rpc.io/base",
-  "https://base.llamarpc.com"
-];
-
-let rpcIndex = 0;
-
-function makePublicClient() {
-  return createPublicClient({
-    chain: {
-      id: 8453,
-      name: "Base",
-      network: "base",
-      nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-      rpcUrls: {
-        default: { http: RPCS },
-        public: { http: RPCS }
-      }
-    },
-    transport: http(RPCS[rpcIndex], {
-      retryCount: 2,
-      retryDelay: ({ attempt }) => Math.min(1200, 250 * (attempt + 1))
-    })
-  });
-}
-
-let publicClient = makePublicClient();
-
-function rotateRpc() {
-  rpcIndex = (rpcIndex + 1) % RPCS.length;
-  publicClient = makePublicClient();
-}
-
-function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-function isRateLimitError(e) {
-  const msg = String(e?.message || "").toLowerCase();
-  return msg.includes("429") || msg.includes("rate limit") || msg.includes("over rate limit");
-}
-
-function sortAll(map) {
-  return [...map.entries()]
-    .map(([addr, pts]) => ({ addr, pts }))
-    .sort((a, b) => b.pts - a.pts);
-}
-
-function topN(list, n) {
-  return list.slice(0, n);
-}
-
-async function getActionLogsChunked(fromBlock, toBlock) {
-  // 🔒 Alchemy free-tier: max 10 blocks inclusive
-  // so to-from must be <= 9
-  const step = 9n;
-
-  const out = [];
-
-  for (let from = fromBlock; from <= toBlock; ) {
-    const to = from + step > toBlock ? toBlock : from + step;
-
-    try {
-      const part = await publicClient.getLogs({
-        address: CONTRACT,
-        event: ACTION_LOGGED_EVENT,
-        args: { action: ACTION_WEEKLY_ADD },
-        fromBlock: from,
-        toBlock: to
-      });
-
-      out.push(...part);
-      from = to + 1n;
-    } catch (e) {
-      // ✅ If rate-limited, rotate RPC + backoff and retry same chunk
-      if (isRateLimitError(e)) {
-        rotateRpc();
-        await sleep(900);
-        continue;
-      }
-
-      // for Alchemy 400 etc, just throw (so UI shows error)
-      throw e;
-    }
-  }
-
-  return out;
-}
-
-
 async function fetchLeaderboard() {
-  // ✅ Use server-side indexer to avoid RPC limits / BigInt issues inside WebView
   const weekStart = weekStartUtcMs();
   const res = await fetch(`/api/leaderboard?weekStart=${encodeURIComponent(String(weekStart))}`);
   if (!res.ok) {
@@ -658,11 +557,8 @@ async function fetchLeaderboard() {
   };
 }
 
-
 // =====================================================
-// On-chain Commit: add BankPoints to Weekly leaderboard
-// - Unlimited commits (user requested)
-// - Uses ERC-5792 wallet_sendCalls with builder code suffix
+// On-chain Commit
 // =====================================================
 let commitInFlight = false;
 
@@ -691,7 +587,6 @@ async function commitWeeklyOnchain() {
 
     const chainId = await p.request({ method: "eth_chainId", params: [] });
 
-    // Encode bytes payload: (points, weekStartMs)
     const weekStart = weekStartUtcMs();
     const payload = encodeAbiParameters(
       [{ type: "uint256" }, { type: "uint256" }],
@@ -720,50 +615,28 @@ async function commitWeeklyOnchain() {
       from: account,
       chainId,
       atomicRequired: true,
-      calls: [
-        {
-          to: CONTRACT,
-          value: "0x0",
-          data
-        }
-      ],
-      capabilities: {
-        dataSuffix
-      }
+      calls: [{ to: CONTRACT, value: "0x0", data }],
+      capabilities: { dataSuffix }
     };
 
-    // MUST attempt wallet_sendCalls first
     try {
       await p.request({ method: "wallet_sendCalls", params: [params] });
     } catch (e) {
-      // graceful fallback
       if (String(e?.message || "").toLowerCase().includes("rejected")) {
         toast("Transaction rejected");
         return;
       }
-      // fallback to eth_sendTransaction (some wallets)
       await p.request({
         method: "eth_sendTransaction",
-        params: [
-          {
-            from: account,
-            to: CONTRACT,
-            value: "0x0",
-            data
-          }
-        ]
+        params: [{ from: account, to: CONTRACT, value: "0x0", data }]
       });
     }
 
-    // On successful submit: zero bank (points are now committed)
     profile.bankPoints = 0;
     persistProfile();
     toast("Committed on-chain! Updating leaderboard…", 2200);
 
-    // refresh leaderboard if sheet is open
-    if (isSheetOpen()) {
-      await openLeaderboardsView();
-    }
+    if (isSheetOpen()) await openLeaderboardsView();
   } catch (e) {
     toast(e?.message ? String(e.message) : "Commit failed");
   } finally {
@@ -786,7 +659,6 @@ function bindInstantTap(btn, fn) {
 
   btn.addEventListener("pointerdown", onPointerDown, { passive: false });
 
-  // kill ghost click
   btn.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -799,8 +671,14 @@ function moveLane(delta) {
   game.lane = next;
 }
 
-bindInstantTap(els.leftBtn, () => { hapticTap(); moveLane(-1); });
-bindInstantTap(els.rightBtn, () => { hapticTap(); moveLane(+1); });
+bindInstantTap(els.leftBtn, () => {
+  hapticTap();
+  moveLane(-1);
+});
+bindInstantTap(els.rightBtn, () => {
+  hapticTap();
+  moveLane(+1);
+});
 bindInstantTap(els.saveBtn, () => saveRunToBank());
 
 // =====================================================
@@ -845,30 +723,12 @@ function openMainMenu() {
     "Menu",
     `
     <div class="menuGrid">
-      <div class="kv">
-        <div class="k">Wallet</div>
-        <div class="v">${walletLine}</div>
-      </div>
-      <div class="kv">
-        <div class="k">Week</div>
-        <div class="v">${week} (UTC)</div>
-      </div>
-      <div class="kv">
-        <div class="k">Run points</div>
-        <div class="v">${Math.floor(game.runScore)}</div>
-      </div>
-      <div class="kv">
-        <div class="k">Bank points</div>
-        <div class="v">${Math.floor(profile.bankPoints)}</div>
-      </div>
-      <div class="kv">
-        <div class="k">Coins</div>
-        <div class="v">${Math.floor(profile.coins)} (→ ${Math.floor(profile.coins) * 10} pts)</div>
-      </div>
-      <div class="kv">
-        <div class="k">Decay</div>
-        <div class="v">-25% every 15 min</div>
-      </div>
+      <div class="kv"><div class="k">Wallet</div><div class="v">${walletLine}</div></div>
+      <div class="kv"><div class="k">Week</div><div class="v">${week} (UTC)</div></div>
+      <div class="kv"><div class="k">Run points</div><div class="v">${Math.floor(game.runScore)}</div></div>
+      <div class="kv"><div class="k">Bank points</div><div class="v">${Math.floor(profile.bankPoints)}</div></div>
+      <div class="kv"><div class="k">Coins</div><div class="v">${Math.floor(profile.coins)} (→ ${Math.floor(profile.coins) * 10} pts)</div></div>
+      <div class="kv"><div class="k">Decay</div><div class="v">-25% every 15 min</div></div>
     </div>
 
     <div class="btnRow">
@@ -906,7 +766,6 @@ function openMainMenu() {
   });
   $("#btnHow").addEventListener("click", openHowView);
 
-  // Use pointerdown for snappy mobile interaction inside overlays
   const commitBtn = $("#btnCommit");
   commitBtn.addEventListener(
     "pointerdown",
@@ -917,7 +776,6 @@ function openMainMenu() {
     },
     { passive: false }
   );
-  // keep click as a fallback for desktop
   commitBtn.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -931,10 +789,10 @@ function openHowView() {
     `
     <div class="copy">
       <p><b>Play short runs.</b> Your <b>Run</b> points grow while you survive.</p>
-      <p><b>Save</b> (bottom button) moves Run → <b>Bank</b> instantly (no transaction).</p>
-      <p><b>Bank decays</b>: every <b>15 minutes</b>, Bank is reduced by <b>25%</b>. So it’s best to commit soon.</p>
+      <p><b>Save</b> moves Run → <b>Bank</b> instantly (no transaction).</p>
+      <p><b>Bank decays</b>: every <b>15 minutes</b>, Bank is reduced by <b>25%</b>.</p>
       <p><b>Coins</b>: 1 coin = <b>10 points</b>. Convert from the Menu.</p>
-      <p><b>Commit</b> is optional and on-chain. It adds your current Bank to your <b>Weekly public leaderboard</b>. You can commit unlimited times.</p>
+      <p><b>Commit</b> is optional and on-chain. It adds your current Bank to your <b>Weekly public leaderboard</b>.</p>
     </div>
     <div class="btnRow">
       <button class="pill" id="backMenu">Back</button>
@@ -947,6 +805,10 @@ function openHowView() {
 }
 
 let boardsInFlight = false;
+
+function topN(list, n) {
+  return list.slice(0, n);
+}
 
 async function openLeaderboardsView() {
   if (boardsInFlight) return;
@@ -972,9 +834,11 @@ async function openLeaderboardsView() {
     const { weekStart, prevWeekStart, weeklySorted, prevWeekSorted, allTimeSorted } = data;
 
     const weekLabel = new Date(weekStart).toISOString().slice(0, 10);
+    const lastWeekLabel = new Date(prevWeekStart).toISOString().slice(0, 10);
 
     const weeklyTop = topN(weeklySorted, 100);
     const allTop = topN(allTimeSorted, 100);
+    const lastWinners = topN(prevWeekSorted, 3);
 
     const weeklyIndex = account
       ? weeklySorted.findIndex((x) => x.addr.toLowerCase() === account.toLowerCase())
@@ -1002,10 +866,6 @@ async function openLeaderboardsView() {
 
     const weeklyHtml = await renderList(weeklyTop);
     const allHtml = await renderList(allTop);
-
-    // Last week's winners (top 3) - show until this week ends
-    const lastWeekLabel = new Date(prevWeekStart).toISOString().slice(0, 10);
-    const lastWinners = topN(prevWeekSorted, 3);
     const winnersHtml =
       lastWinners.length === 0
         ? `<div class="copy">No winners data found for last week.</div>`
@@ -1013,10 +873,7 @@ async function openLeaderboardsView() {
 
     $("#boards").innerHTML = `
       <div class="board">
-        <div class="boardTitle">
-          <div>Weekly (since ${weekLabel} UTC)</div>
-          <div>Top 100</div>
-        </div>
+        <div class="boardTitle"><div>Weekly (since ${weekLabel} UTC)</div><div>Top 100</div></div>
         <div class="boardList">${weeklyHtml || `<div class="copy">No entries yet.</div>`}</div>
         <div class="subcopy">
           ${
@@ -1032,18 +889,12 @@ async function openLeaderboardsView() {
       </div>
 
       <div class="board">
-        <div class="boardTitle">
-          <div>All-time</div>
-          <div>Top 100</div>
-        </div>
+        <div class="boardTitle"><div>All-time</div><div>Top 100</div></div>
         <div class="boardList">${allHtml || `<div class="copy">No entries yet.</div>`}</div>
       </div>
 
       <div class="board">
-        <div class="boardTitle">
-          <div>Last week winners (since ${lastWeekLabel} UTC)</div>
-          <div>Top 3</div>
-        </div>
+        <div class="boardTitle"><div>Last week winners (since ${lastWeekLabel} UTC)</div><div>Top 3</div></div>
         ${winnersHtml}
       </div>
     `;
@@ -1109,38 +960,25 @@ function spawnObstacle() {
   const g = laneGeometry();
   const lane = randInt(0, 3);
   const size = Math.max(36, Math.min(56, g.laneW * 0.55));
-  // More car-like proportions (top-down): taller than wide.
   const w = Math.max(28, size * 0.82);
   const h = Math.max(40, size * 1.18);
 
-  // Use multiple enemy colors instead of a single one.
   const ENEMY_COLORS = [
-    "rgba(255,80,120,0.95)", // pink/red
-    "rgba(255,188,64,0.95)", // amber
-    "rgba(160,110,255,0.95)", // purple
-    "rgba(60,220,160,0.95)", // green
-    "rgba(90,190,255,0.95)" // cyan
+    "rgba(255,80,120,0.95)",
+    "rgba(255,188,64,0.95)",
+    "rgba(160,110,255,0.95)",
+    "rgba(60,220,160,0.95)",
+    "rgba(90,190,255,0.95)"
   ];
   const color = ENEMY_COLORS[randInt(0, ENEMY_COLORS.length - 1)];
 
-  game.obstacles.push({
-    lane,
-    y: g.roadY - h - 10,
-    size,
-    w,
-    h,
-    color
-  });
+  game.obstacles.push({ lane, y: g.roadY - h - 10, size, w, h, color });
 }
 
 function spawnCoin() {
   const g = laneGeometry();
   const lane = randInt(0, 3);
-  game.coins.push({
-    lane,
-    y: g.roadY - 24,
-    r: 10
-  });
+  game.coins.push({ lane, y: g.roadY - 24, r: 10 });
 }
 
 function rectsOverlap(a, b) {
@@ -1156,17 +994,15 @@ function update(dt) {
   game.t += dt;
   game.speed = Math.min(3.2, game.speed + dt * 0.03);
 
-  // score grows with time and speed
   game.runScore += dt * (8 + game.speed * 5) * profile.boostMult;
 
-  // spawn obstacles
   const now = performance.now();
+
   if (now - game.lastSpawnAt > 650 - game.speed * 80) {
     game.lastSpawnAt = now;
     spawnObstacle();
   }
 
-  // spawn coins
   if (now - game.lastCoinAt > 1200) {
     game.lastCoinAt = now;
     if (Math.random() < 0.75) spawnCoin();
@@ -1174,42 +1010,35 @@ function update(dt) {
 
   const g = laneGeometry();
 
-  // car rect
-  const carW = Math.max(38, Math.min(62, g.laneW * 0.7));
-  const carH = carW * 1.05;
+  // collision rect for the player (consistent with drawn car)
+  const carW = Math.max(36, Math.min(60, g.laneW * 0.62));
+  const carH = carW * 1.30;
   const carX = laneCenterX(g, game.lane) - carW / 2;
   const carY = g.roadY + g.roadH - carH - 18;
   const carRect = { x: carX, y: carY, w: carW, h: carH };
 
-  // move obstacles downward
   const obsSpeed = (220 + game.speed * 90) * dt;
   for (const o of game.obstacles) o.y += obsSpeed;
 
-  // move coins
   const coinSpeed = (190 + game.speed * 70) * dt;
   for (const c of game.coins) c.y += coinSpeed;
 
-  // collisions
+  // ✅ collisions (fixed - no duplicate r bug)
   for (const o of game.obstacles) {
     const ow = o.w ?? o.size;
     const oh = o.h ?? o.size;
     const ox = laneCenterX(g, o.lane) - ow / 2;
     const oy = o.y;
     const r = { x: ox, y: oy, w: ow, h: oh };
+
     if (rectsOverlap(carRect, r)) {
-      game.over = true;
       crashVibe();
+      game.over = true;
       stopBgm();
       toast("Crash! Save or restart", 2200);
       break;
     }
   }
-if (rectsOverlap(carRect, r)) {
-  crashVibe();
-  game.over = true;
-  toast("Crash! Save or restart", 2200);
-  break;
-}
 
   // coin pickup
   const keptCoins = [];
@@ -1219,6 +1048,7 @@ if (rectsOverlap(carRect, r)) {
     const dx = carRect.x + carRect.w / 2 - cx;
     const dy = carRect.y + carRect.h / 2 - cy;
     const dist = Math.sqrt(dx * dx + dy * dy);
+
     if (dist < carRect.w * 0.45 + c.r) {
       profile.coins += 1;
       playCoinSfx();
@@ -1229,7 +1059,6 @@ if (rectsOverlap(carRect, r)) {
   }
   game.coins = keptCoins;
 
-  // cleanup
   game.obstacles = game.obstacles.filter((o) => o.y < g.roadY + g.roadH + 80);
   game.coins = game.coins.filter((c) => c.y < g.roadY + g.roadH + 60);
 }
@@ -1249,30 +1078,23 @@ function drawRoundedRect(x, y, w, h, r) {
   ctx.closePath();
 }
 
-// Top-down car sprite (canvas only, no external assets)
-// Designed to look less "boxy": body, roof/cabin, windshield, wheels, lights.
 function drawCarTopDown(x, y, w, h, bodyColor) {
-  // body
   ctx.fillStyle = bodyColor;
   drawRoundedRect(x, y, w, h, Math.min(14, w * 0.35));
   ctx.fill();
 
-  // subtle center highlight
   ctx.fillStyle = "rgba(255,255,255,0.10)";
   drawRoundedRect(x + w * 0.08, y + h * 0.12, w * 0.84, h * 0.52, Math.min(12, w * 0.3));
   ctx.fill();
 
-  // cabin / roof
   ctx.fillStyle = "rgba(0,0,0,0.28)";
   drawRoundedRect(x + w * 0.18, y + h * 0.18, w * 0.64, h * 0.34, Math.min(10, w * 0.25));
   ctx.fill();
 
-  // windshield
   ctx.fillStyle = "rgba(255,255,255,0.16)";
   drawRoundedRect(x + w * 0.24, y + h * 0.22, w * 0.52, h * 0.10, Math.min(8, w * 0.2));
   ctx.fill();
 
-  // wheels (small rounded rects on the sides)
   ctx.fillStyle = "rgba(0,0,0,0.55)";
   const ww = Math.max(4, w * 0.14);
   const wh = Math.max(10, h * 0.18);
@@ -1284,7 +1106,6 @@ function drawCarTopDown(x, y, w, h, bodyColor) {
   drawRoundedRect(x + w - ww * 0.85, wy2, ww, wh, ww * 0.45);
   ctx.fill();
 
-  // headlights
   ctx.fillStyle = "rgba(255,255,255,0.65)";
   ctx.beginPath();
   ctx.arc(x + w * 0.24, y + h * 0.90, Math.max(2.4, w * 0.06), 0, Math.PI * 2);
@@ -1292,12 +1113,9 @@ function drawCarTopDown(x, y, w, h, bodyColor) {
   ctx.fill();
 }
 
-// Premium player car (top-down) – more sporty + less boxy.
-// Uses a painted gradient, crisp outline, racing stripes, tinted glass and underglow.
 function drawPlayerCarPremium(x, y, w, h) {
   ctx.save();
 
-  // Under-glow
   ctx.globalAlpha = 0.75;
   ctx.beginPath();
   ctx.ellipse(x + w / 2, y + h * 0.92, w * 0.55, h * 0.18, 0, 0, Math.PI * 2);
@@ -1305,23 +1123,19 @@ function drawPlayerCarPremium(x, y, w, h) {
   ctx.fill();
   ctx.globalAlpha = 1;
 
-  // Gradient paint (blue → deeper blue)
   const paint = ctx.createLinearGradient(x, y, x, y + h);
   paint.addColorStop(0, "rgba(145,225,255,0.98)");
   paint.addColorStop(0.45, "rgba(90,190,255,0.97)");
   paint.addColorStop(1, "rgba(40,120,210,0.98)");
 
-  // Body
   ctx.fillStyle = paint;
   drawRoundedRect(x, y, w, h, Math.min(18, w * 0.42));
   ctx.fill();
 
-  // Crisp outline for a premium look
   ctx.strokeStyle = "rgba(255,255,255,0.22)";
   ctx.lineWidth = Math.max(1.6, w * 0.05);
   ctx.stroke();
 
-  // Metallic highlight strip
   const hi = ctx.createLinearGradient(x, y, x + w, y);
   hi.addColorStop(0, "rgba(255,255,255,0.00)");
   hi.addColorStop(0.35, "rgba(255,255,255,0.16)");
@@ -1331,17 +1145,14 @@ function drawPlayerCarPremium(x, y, w, h) {
   drawRoundedRect(x + w * 0.10, y + h * 0.10, w * 0.80, h * 0.60, Math.min(16, w * 0.38));
   ctx.fill();
 
-  // Cabin / roof (tinted)
   ctx.fillStyle = "rgba(0,0,0,0.30)";
   drawRoundedRect(x + w * 0.20, y + h * 0.16, w * 0.60, h * 0.40, Math.min(14, w * 0.34));
   ctx.fill();
 
-  // Windshield reflection
   ctx.fillStyle = "rgba(255,255,255,0.22)";
   drawRoundedRect(x + w * 0.26, y + h * 0.20, w * 0.48, h * 0.12, Math.min(10, w * 0.26));
   ctx.fill();
 
-  // Racing stripes
   ctx.fillStyle = "rgba(255,255,255,0.22)";
   drawRoundedRect(x + w * 0.46, y + h * 0.08, w * 0.08, h * 0.74, w * 0.08);
   ctx.fill();
@@ -1350,7 +1161,6 @@ function drawPlayerCarPremium(x, y, w, h) {
   drawRoundedRect(x + w * 0.54, y + h * 0.10, w * 0.04, h * 0.70, w * 0.06);
   ctx.fill();
 
-  // Wheels
   ctx.fillStyle = "rgba(0,0,0,0.62)";
   const ww = Math.max(4, w * 0.14);
   const wh = Math.max(10, h * 0.18);
@@ -1362,7 +1172,6 @@ function drawPlayerCarPremium(x, y, w, h) {
   drawRoundedRect(x + w - ww * 0.82, wy2, ww, wh, ww * 0.50);
   ctx.fill();
 
-  // Headlights (cool white)
   ctx.fillStyle = "rgba(230,248,255,0.80)";
   ctx.beginPath();
   ctx.arc(x + w * 0.24, y + h * 0.90, Math.max(2.6, w * 0.06), 0, Math.PI * 2);
@@ -1375,31 +1184,27 @@ function drawPlayerCarPremium(x, y, w, h) {
 function render() {
   const g = laneGeometry();
 
-  // background
   ctx.clearRect(0, 0, g.w, g.h);
 
-  // subtle vignette
   const grd = ctx.createRadialGradient(g.w / 2, g.h / 2, 40, g.w / 2, g.h / 2, g.w);
   grd.addColorStop(0, "rgba(0,0,0,0.0)");
   grd.addColorStop(1, "rgba(0,0,0,0.65)");
+
   ctx.fillStyle = "#0b0b10";
   ctx.fillRect(0, 0, g.w, g.h);
   ctx.fillStyle = grd;
   ctx.fillRect(0, 0, g.w, g.h);
 
-  // road
   ctx.save();
   ctx.globalAlpha = 0.95;
   ctx.fillStyle = "rgba(20,20,28,0.9)";
   drawRoundedRect(g.roadX, g.roadY, g.roadW, g.roadH, 26);
   ctx.fill();
 
-  // road border
   ctx.strokeStyle = "rgba(255,174,64,0.65)";
   ctx.lineWidth = 3;
   ctx.stroke();
 
-  // lane separators (3 lines)
   ctx.strokeStyle = "rgba(255,255,255,0.22)";
   ctx.lineWidth = 3;
   ctx.setLineDash([14, 18]);
@@ -1412,7 +1217,6 @@ function render() {
   }
   ctx.setLineDash([]);
 
-  // obstacles
   for (const o of game.obstacles) {
     const ow = o.w ?? o.size;
     const oh = o.h ?? o.size;
@@ -1421,7 +1225,6 @@ function render() {
     drawCarTopDown(x, y, ow, oh, o.color ?? "rgba(255,80,120,0.95)");
   }
 
-  // coins
   for (const c of game.coins) {
     const x = laneCenterX(g, c.lane);
     const y = c.y;
@@ -1434,16 +1237,12 @@ function render() {
     ctx.stroke();
   }
 
-  // player car
-  // Slightly slimmer/taller for a more "car-like" silhouette.
   const carW = Math.max(36, Math.min(60, g.laneW * 0.62));
   const carH = carW * 1.30;
   const carX = laneCenterX(g, game.lane) - carW / 2;
   const carY = g.roadY + g.roadH - carH - 18;
-
   drawPlayerCarPremium(carX, carY, carW, carH);
 
-  // game over banner
   if (game.over) {
     ctx.fillStyle = "rgba(0,0,0,0.55)";
     drawRoundedRect(g.roadX + 16, g.roadY + g.roadH * 0.38, g.roadW - 32, 90, 16);
@@ -1457,19 +1256,16 @@ function render() {
       g.roadX + 34,
       g.roadY + g.roadH * 0.38 + 60
     );
-
-    // clickable restart area
     els.c.style.cursor = "pointer";
   } else {
     els.c.style.cursor = "default";
   }
 
   ctx.restore();
-
   renderHud();
 }
 
-// Restart when game over and canvas tapped
+// Restart on tap when over
 els.c.addEventListener(
   "pointerdown",
   (e) => {
