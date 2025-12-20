@@ -1,0 +1,12 @@
+{
+  "name": "lane-runner",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build": "echo \"no build\"",
+    "vercel-build": "npm run build"
+  },
+  "dependencies": {
+    "js-sha3": "^0.9.3"
+  }
+}
