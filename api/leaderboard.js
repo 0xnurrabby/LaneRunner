@@ -148,51 +148,6 @@ function addrFromTopic(topic1) {
   return "0x" + t.slice(t.length - 40);
 }
 
-// ----------------------
-// Neynar: address -> username.farcaster.eth
-// ----------------------
-async function fetchNamesFromNeynar(addresses) {
-  const key = process.env.NEYNAR_API_KEY;
-  if (!key) return new Map();
-
-  const uniq = [...new Set((addresses || []).map((a) => String(a || "").toLowerCase()))].filter(Boolean);
-  if (!uniq.length) return new Map();
-
-  const out = new Map();
-  const chunkSize = 200;
-
-  for (let i = 0; i < uniq.length; i += chunkSize) {
-    const chunk = uniq.slice(i, i + chunkSize);
-
-    const url =
-      "https://api.neynar.com/v2/farcaster/user/bulk-by-address?" +
-      new URLSearchParams({
-        addresses: chunk.join(","),
-        address_types: "custody_address,verified_address"
-      });
-
-    const r = await fetch(url, { headers: { "x-api-key": key } });
-    if (!r.ok) continue;
-
-    const j = await r.json();
-    for (const u of j?.users || []) {
-      if (!u?.username) continue;
-
-      // ✅ show as username.farcaster.eth (instead of 0x.. or @username)
-      const name = `${u.username}.farcaster.eth`;
-
-      const custody = u?.custody_address ? String(u.custody_address).toLowerCase() : null;
-      if (custody) out.set(custody, name);
-
-      for (const a of u?.verified_addresses?.eth_addresses || []) {
-        out.set(String(a).toLowerCase(), name);
-      }
-    }
-  }
-
-  return out;
-}
-
 function sortMapToArray(map) {
   return [...map.entries()]
     .map(([addr, pts]) => ({ addr, pts }))
@@ -255,17 +210,11 @@ module.exports = async function handler(req, res) {
     const prevWeekSorted = sortMapToArray(perWeek.get(String(BigInt(prevWeekStart))) || new Map());
     const allTimeSorted = sortMapToArray(allTime);
 
-    const nameMap = await fetchNamesFromNeynar([
-      ...weeklySorted.slice(0, 200).map((x) => x.addr),
-      ...prevWeekSorted.slice(0, 200).map((x) => x.addr),
-      ...allTimeSorted.slice(0, 200).map((x) => x.addr)
-    ]);
-
     const toJson = (arr) =>
       arr.slice(0, 200).map((x) => ({
         addr: x.addr,
         pts: x.pts.toString(),
-        name: nameMap.get(String(x.addr).toLowerCase()) || null
+        name: null // UI will resolve name via /api/fcname
       }));
 
     res.setHeader("cache-control", "s-maxage=60, stale-while-revalidate=300");
