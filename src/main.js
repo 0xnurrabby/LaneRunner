@@ -144,7 +144,7 @@ function setupAudio() {
   for (let i = 0; i < 5; i++) {
     const a = new Audio("/assets/coin.mp3");
     a.preload = "auto";
-    a.volume = 0.85;
+    a.volume = 0.40;
     AUDIO.coinPool.push(a);
   }
   // Background music
