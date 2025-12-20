@@ -303,23 +303,68 @@ async function getFcFid() {
   return fcFid;
 }
 
+// ✅ in-memory cache (page session) - optional but fast
+const __nameMem = new Map();
+
 async function displayNameFor(addr) {
+  const k = String(addr || "").toLowerCase();
+  if (!k) return shortAddr(String(addr || ""));
+
+  // 0) session cache (fast)
+  if (__nameMem.has(k)) return __nameMem.get(k);
+
+  // 1) localStorage cache (if any)
   try {
     const raw = localStorage.getItem("addrNameMap");
     if (raw) {
       const m = JSON.parse(raw);
-      const k = String(addr || "").toLowerCase();
       const v = m?.[k];
-      if (v) return v;
+      if (v) {
+        __nameMem.set(k, v);
+        return v;
+      }
     }
   } catch {}
 
-  if (account && addr && addr.toLowerCase() === account.toLowerCase()) {
-    const u = await getFcUsername();
-    if (u) return `@${u}`;
-  }
-  return shortAddr(addr);
+  // 2) self wallet => @username (your existing behavior)
+  try {
+    if (account && k === String(account).toLowerCase()) {
+      const u = await getFcUsername();
+      if (u) {
+        const v = `@${u}`;
+        __nameMem.set(k, v);
+        return v;
+      }
+    }
+  } catch {}
+
+  // 3) Neynar via serverless (no key leak)
+  try {
+    const r = await fetch(`/api/fcname?addr=${encodeURIComponent(k)}`);
+    const j = await r.json().catch(() => null);
+
+    if (j?.name) {
+      const v = String(j.name);
+      __nameMem.set(k, v);
+
+      // optional: save to localStorage too
+      try {
+        const raw = localStorage.getItem("addrNameMap");
+        const m = raw ? JSON.parse(raw) : {};
+        m[k] = v;
+        localStorage.setItem("addrNameMap", JSON.stringify(m));
+      } catch {}
+
+      return v;
+    }
+  } catch {}
+
+  // 4) fallback
+  const fallback = shortAddr(String(addr || ""));
+  __nameMem.set(k, fallback);
+  return fallback;
 }
+
 
 function fmtPts(n) {
   const s = (typeof n === "bigint" ? n : BigInt(n || 0)).toString();
