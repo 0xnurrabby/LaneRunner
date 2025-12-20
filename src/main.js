@@ -201,24 +201,33 @@ function playCoinSfx() {
     a.play().catch(() => {});
   } catch {}
 }
-
 function vibrate(pattern) {
+  // 1) Standard Web Vibration API (works mostly on Android Chrome, some in-app browsers)
   try {
     if (navigator && typeof navigator.vibrate === "function") {
-      navigator.vibrate(pattern);
+      return navigator.vibrate(pattern);
     }
   } catch {}
+
+  // 2) Farcaster miniapp SDK fallback (if supported by the host)
+  // Not all versions support this—so try/catch safe
+  try {
+    const p = Array.isArray(pattern) ? pattern[0] : pattern;
+    if (sdk?.actions?.haptics?.impact) {
+      // light/medium/heavy based on duration
+      const type = p >= 60 ? "medium" : "light";
+      sdk.actions.haptics.impact(type);
+      return true;
+    }
+    if (sdk?.actions?.haptics?.notification) {
+      sdk.actions.haptics.notification("success");
+      return true;
+    }
+  } catch {}
+
+  return false;
 }
 
-function hapticTap() {
-  // light and short (not annoying)
-  vibrate(12);
-}
-
-function crashVibe() {
-  // noticeable but not irritating
-  vibrate([55, 30, 55]);
-}
 
 // =====================================================
 // Mini App READY (MANDATORY)
