@@ -168,53 +168,42 @@ function addrFromTopic(topic1) {
 // Farcaster names via Neynar (existing, lightly cleaned)
 // --------------------------
 async function fetchNamesFromNeynar(addresses) {
-  const out = {};
-  const uniq = [...new Set((addresses || [])
-    .map(a => String(a || "").toLowerCase())
-    .filter(a => a.startsWith("0x") && a.length === 42)
-  )];
+  const key = process.env.NEYNAR_API_KEY;
+  if (!key) return new Map();
 
-  if (!uniq.length) return out;
+  const uniq = [...new Set((addresses || []).map((a) => String(a || "").toLowerCase()))].filter(Boolean);
+  if (!uniq.length) return new Map();
 
-  const url = "https://api.neynar.com/v2/farcaster/user/bulk-by-address";
-  const r = await fetch(url, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": process.env.NEYNAR_API_KEY,
-      "x-neynar-experimental": "true",
-    },
-    body: JSON.stringify({ addresses: uniq }),
-  });
+  const out = new Map();
+  const chunkSize = 200;
 
-  if (!r.ok) return out;
+  for (let i = 0; i < uniq.length; i += chunkSize) {
+    const chunk = uniq.slice(i, i + chunkSize);
+    const url =
+      "https://api.neynar.com/v2/farcaster/user/bulk-by-address?" +
+      new URLSearchParams({
+        addresses: chunk.join(","),
+        address_types: "custody_address,verified_address"
+      });
 
-  const j = await r.json();
+    const r = await fetch(url, { headers: { "x-api-key": key } });
+    if (!r.ok) continue;
 
-  // Neynar সাধারণত { users: [...] } বা { result: { users: [...] } } টাইপ হতে পারে
-  const users = j?.users || j?.result?.users || [];
+    const j = await r.json();
+    for (const u of j?.users || []) {
+      if (!u?.username) continue;
 
-  for (const u of users) {
-    const username = u?.username ? String(u.username).replace(/^@/, "") : null;
-    if (!username) continue;
+      const custody = u?.custody_address ? String(u.custody_address).toLowerCase() : null;
+      if (custody) out.set(custody, u.username);
 
-    // 1) custody address
-    const custody = u?.custody_address ? String(u.custody_address).toLowerCase() : null;
-    if (custody) out[custody] = username;
-
-    // 2) verified eth addresses (array)
-    const v = u?.verified_addresses?.eth_addresses || u?.verified_addresses?.ethereum || [];
-    if (Array.isArray(v)) {
-      for (const a of v) {
-        const addr = a ? String(a).toLowerCase() : null;
-        if (addr) out[addr] = username;
+      for (const a of u?.verified_addresses?.eth_addresses || []) {
+        out.set(String(a).toLowerCase(), u.username);
       }
     }
   }
 
   return out;
 }
-
 
 // --------------------------
 // ENS primary via ensdata.net
