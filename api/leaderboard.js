@@ -4,6 +4,8 @@
 // - Uses JSON-RPC directly (no dependencies).
 // - Uses RPC rotation + retries to reduce 429s.
 // - Scans a recent block window (default: 350k blocks) which is roughly ~7 days on Base.
+//
+// ✅ Upgrade: returns Farcaster name + pfp_url via Neynar bulk-by-address
 
 const CONTRACT = "0xB331328F506f2D35125e367A190e914B1b6830cF";
 
@@ -154,6 +156,54 @@ function sortMapToArray(map) {
     .sort((a, b) => (a.pts === b.pts ? 0 : a.pts > b.pts ? -1 : 1));
 }
 
+/**
+ * ✅ Fetch Farcaster profiles from Neynar for addresses (bulk)
+ * Returns Map<addressLower, { name: string, pfp: string|null }>
+ */
+async function fetchProfilesFromNeynar(addresses) {
+  const key = process.env.NEYNAR_API_KEY;
+  if (!key) return new Map();
+
+  const uniq = [...new Set((addresses || []).map((a) => String(a || "").toLowerCase()))].filter(Boolean);
+  if (!uniq.length) return new Map();
+
+  const out = new Map();
+  const chunkSize = 200;
+
+  for (let i = 0; i < uniq.length; i += chunkSize) {
+    const chunk = uniq.slice(i, i + chunkSize);
+    const url =
+      "https://api.neynar.com/v2/farcaster/user/bulk-by-address?" +
+      new URLSearchParams({
+        addresses: chunk.join(","),
+        address_types: "custody_address,verified_address"
+      });
+
+    const r = await fetch(url, { headers: { "x-api-key": key } });
+    if (!r.ok) continue;
+
+    const j = await r.json();
+    for (const u of j?.users || []) {
+      if (!u?.username) continue;
+
+      // ✅ you wanted: xxxxx.farcaster.eth
+      const profile = {
+        name: `${u.username}.farcaster.eth`,
+        pfp: u?.pfp_url ? String(u.pfp_url) : null
+      };
+
+      const custody = u?.custody_address ? String(u.custody_address).toLowerCase() : null;
+      if (custody) out.set(custody, profile);
+
+      for (const a of u?.verified_addresses?.eth_addresses || []) {
+        out.set(String(a).toLowerCase(), profile);
+      }
+    }
+  }
+
+  return out;
+}
+
 module.exports = async function handler(req, res) {
   try {
     const now = Date.now();
@@ -210,12 +260,25 @@ module.exports = async function handler(req, res) {
     const prevWeekSorted = sortMapToArray(perWeek.get(String(BigInt(prevWeekStart))) || new Map());
     const allTimeSorted = sortMapToArray(allTime);
 
+    // ✅ bulk fetch top addresses
+    const topAddrs = [
+      ...weeklySorted.slice(0, 200).map((x) => x.addr),
+      ...prevWeekSorted.slice(0, 200).map((x) => x.addr),
+      ...allTimeSorted.slice(0, 200).map((x) => x.addr)
+    ];
+
+    const profileMap = await fetchProfilesFromNeynar(topAddrs);
+
     const toJson = (arr) =>
-      arr.slice(0, 200).map((x) => ({
-        addr: x.addr,
-        pts: x.pts.toString(),
-        name: null // UI will resolve name via /api/fcname
-      }));
+      arr.slice(0, 200).map((x) => {
+        const p = profileMap.get(String(x.addr).toLowerCase()) || null;
+        return {
+          addr: x.addr,
+          pts: x.pts.toString(),
+          name: p?.name || null,
+          pfp: p?.pfp || null
+        };
+      });
 
     res.setHeader("cache-control", "s-maxage=60, stale-while-revalidate=300");
     res.status(200).json({
