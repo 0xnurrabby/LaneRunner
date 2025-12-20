@@ -908,23 +908,30 @@ async function openLeaderboardsView() {
     const yourWeeklyRank = weeklyIndex >= 0 ? weeklyIndex + 1 : null;
     const yourWeeklyPts = weeklyIndex >= 0 ? weeklySorted[weeklyIndex].pts : 0n;
 
-    const renderList = async (items) => {
-      const rows = await Promise.all(
-        items.map(async (x, i) => {
-          const name = (typeof x.name === "string" && x.name) ? x.name : await displayNameFor(x.addr);
-          return `
-            <div class="entry">
-              <div class="left">
-                <div class="rankBadge">#${i + 1}</div>
-                <div class="addr">${name}</div>
-              </div>
-              <div class="points">${fmtPts(x.pts)}</div>
-            </div>
-          `;
-        })
-      );
-      return rows.join("");
-    };
+   const renderList = async (items) => {
+  const rows = await Promise.all(
+    items.map(async (x, i) => {
+      const name = (typeof x.name === "string" && x.name) ? x.name : await displayNameFor(x.addr);
+
+      const avatarHtml = x.pfp
+        ? `<img class="pfp" src="${x.pfp}" alt="" loading="lazy" referrerpolicy="no-referrer" />`
+        : `<div class="pfp ph"></div>`;
+
+      return `
+        <div class="entry">
+          <div class="left">
+            <div class="rankBadge">#${i + 1}</div>
+            ${avatarHtml}
+            <div class="addr">${name}</div>
+          </div>
+          <div class="points">${fmtPts(x.pts)}</div>
+        </div>
+      `;
+    })
+  );
+  return rows.join("");
+};
+
 
     const weeklyHtml = await renderList(weeklyTop);
     const allHtml = await renderList(allTop);
