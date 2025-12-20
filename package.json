@@ -1,0 +1,8 @@
+{
+  "name": "lane-runner",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "js-sha3": "^0.9.3"
+  }
+}
