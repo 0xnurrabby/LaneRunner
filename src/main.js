@@ -1204,6 +1204,12 @@ function update(dt) {
       break;
     }
   }
+if (rectsOverlap(carRect, r)) {
+  crashVibe();
+  game.over = true;
+  toast("Crash! Save or restart", 2200);
+  break;
+}
 
   // coin pickup
   const keptCoins = [];
