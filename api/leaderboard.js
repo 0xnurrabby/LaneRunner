@@ -148,7 +148,9 @@ function addrFromTopic(topic1) {
   return "0x" + t.slice(t.length - 40);
 }
 
-
+// ----------------------
+// Neynar: address -> username.farcaster.eth
+// ----------------------
 async function fetchNamesFromNeynar(addresses) {
   const key = process.env.NEYNAR_API_KEY;
   if (!key) return new Map();
@@ -161,6 +163,7 @@ async function fetchNamesFromNeynar(addresses) {
 
   for (let i = 0; i < uniq.length; i += chunkSize) {
     const chunk = uniq.slice(i, i + chunkSize);
+
     const url =
       "https://api.neynar.com/v2/farcaster/user/bulk-by-address?" +
       new URLSearchParams({
@@ -174,7 +177,9 @@ async function fetchNamesFromNeynar(addresses) {
     const j = await r.json();
     for (const u of j?.users || []) {
       if (!u?.username) continue;
-      const name = "@" + u.username;
+
+      // ✅ show as username.farcaster.eth (instead of 0x.. or @username)
+      const name = `${u.username}.farcaster.eth`;
 
       const custody = u?.custody_address ? String(u.custody_address).toLowerCase() : null;
       if (custody) out.set(custody, name);
@@ -187,7 +192,6 @@ async function fetchNamesFromNeynar(addresses) {
 
   return out;
 }
-
 
 function sortMapToArray(map) {
   return [...map.entries()]
