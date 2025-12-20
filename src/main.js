@@ -479,8 +479,10 @@ function topN(list, n) {
 }
 
 async function getActionLogsChunked(fromBlock, toBlock) {
-  // ✅ bigger chunk => fewer eth_getLogs calls => less 429
-  const step = 10n;
+  // 🔒 Alchemy free-tier: max 10 blocks inclusive
+  // so to-from must be <= 9
+  const step = 9n;
+
   const out = [];
 
   for (let from = fromBlock; from <= toBlock; ) {
@@ -494,6 +496,7 @@ async function getActionLogsChunked(fromBlock, toBlock) {
         fromBlock: from,
         toBlock: to
       });
+
       out.push(...part);
       from = to + 1n;
     } catch (e) {
@@ -504,20 +507,14 @@ async function getActionLogsChunked(fromBlock, toBlock) {
         continue;
       }
 
-      // Existing fallback split (keep)
-      if (to - from > 5000n) {
-        const mid = from + (to - from) / 2n;
-        const left = await getActionLogsChunked(from, mid);
-        const right = await getActionLogsChunked(mid + 1n, to);
-        out.push(...left, ...right);
-        from = to + 1n;
-      } else {
-        throw e;
-      }
+      // for Alchemy 400 etc, just throw (so UI shows error)
+      throw e;
     }
   }
+
   return out;
 }
+
 
 async function fetchLeaderboard() {
   // 1️⃣ get latest block
