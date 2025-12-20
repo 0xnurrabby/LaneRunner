@@ -1201,9 +1201,6 @@ function render() {
   drawRoundedRect(g.roadX, g.roadY, g.roadW, g.roadH, 26);
   ctx.fill();
 
-  ctx.strokeStyle = "rgba(255,174,64,0.65)";
-  ctx.lineWidth = 3;
-  ctx.stroke();
 
   ctx.strokeStyle = "rgba(255,255,255,0.22)";
   ctx.lineWidth = 3;
