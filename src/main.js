@@ -606,7 +606,8 @@ async function fetchLeaderboard() {
   const j = await res.json();
 
   const normalize = (arr) =>
-    (arr || []).map((x) => ({ addr: x.addr, pts: BigInt(x.pts), name: x.name }));
+  (arr || []).map((x) => ({ addr: x.addr, pts: BigInt(x.pts), name: x.name, pfp: x.pfp || null }));
+
 
   return {
     weekStart: j.weekStart,
