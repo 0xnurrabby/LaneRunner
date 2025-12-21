@@ -76,7 +76,7 @@ app.innerHTML = `
           <span class="ctrlIcon">◀</span><span class="ctrlText">Left</span>
         </button>
         <button class="ctrlBtn primary" id="saveBtn" aria-label="Save Points">
-          <span class="ctrlText">Save</span>
+          <span class="ctrlText">💾Save</span>
         </button>
         <button class="ctrlBtn" id="rightBtn" aria-label="Move Right">
           <span class="ctrlText">Right</span><span class="ctrlIcon">▶</span>
