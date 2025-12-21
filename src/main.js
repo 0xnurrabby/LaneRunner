@@ -750,7 +750,7 @@ function openMainMenu() {
       <div class="kv"><div class="k">Run points</div><div class="v">${Math.floor(game.runScore)}</div></div>
       <div class="kv"><div class="k">Saved points</div><div class="v">${Math.floor(profile.bankPoints)}</div></div>
       <div class="kv"><div class="k">Coins</div><div class="v">${Math.floor(profile.coins)} (→ ${Math.floor(profile.coins) * 10} pts)</div></div>
-      <div class="kv"><div class="k">⚠️Saved points deduction</div><div class="v">-25% every 15 min</div></div>
+      <div class="kv"><div class="k">⚠️Saved points deduction</div><div class="v">-25% every 10 min</div></div>
     </div>
 
     <div class="btnRow">
@@ -768,7 +768,7 @@ function openMainMenu() {
     </div>
 
     <div class="alertRed">
-  ⚠️ Important: Please commit your bank points before closing the app!
+  ⚠️ Important: Please Deposit your Saved points within every 10 min. If you don't,  25% percent of your saved points will be deducted every 10 minutes!
 </div>
   `,
     "menu"
