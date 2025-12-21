@@ -55,7 +55,8 @@ app.innerHTML = `
       <button class="iconBtn" id="menuBtn" aria-label="Menu">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
-      <div class="title">${TOP_TITLE}</div>
+      <div class="title mcFont">${colorizeMinecraftText(TOP_TITLE)}</div>
+
       <button class="badge" id="statusBadge">Loading…</button>
     </div>
 
