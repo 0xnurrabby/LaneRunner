@@ -401,7 +401,7 @@ function hoursToMs(h) {
 // =====================================================
 // Off-chain Profile: banked points + coins + decay
 // =====================================================
-const DECAY_INTERVAL_MS = 15 * 60 * 1000;
+const DECAY_INTERVAL_MS = 10 * 60 * 1000;
 const DECAY_MULT = 0.75;
 
 const profile = {
