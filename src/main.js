@@ -748,9 +748,9 @@ function openMainMenu() {
       <div class="kv"><div class="k">Wallet</div><div class="v">${walletLine}</div></div>
       <div class="kv"><div class="k">Week</div><div class="v">${week} (UTC)</div></div>
       <div class="kv"><div class="k">Run points</div><div class="v">${Math.floor(game.runScore)}</div></div>
-      <div class="kv"><div class="k">Bank points</div><div class="v">${Math.floor(profile.bankPoints)}</div></div>
+      <div class="kv"><div class="k">Saved points</div><div class="v">${Math.floor(profile.bankPoints)}</div></div>
       <div class="kv"><div class="k">Coins</div><div class="v">${Math.floor(profile.coins)} (→ ${Math.floor(profile.coins) * 10} pts)</div></div>
-      <div class="kv"><div class="k">Decay</div><div class="v">-25% every 15 min</div></div>
+      <div class="kv"><div class="k">⚠️Saved points deduction</div><div class="v">-25% every 15 min</div></div>
     </div>
 
     <div class="btnRow">
@@ -764,7 +764,7 @@ function openMainMenu() {
     </div>
 
     <div class="commitWrap">
-      <button class="pill primary" id="btnCommit">Commit Bank → Weekly leaderboard (on-chain)</button>
+      <button class="pill primary" id="btnCommit">Deposit Saved points → Weekly leaderboard</button>
     </div>
 
     <div class="alertRed">
