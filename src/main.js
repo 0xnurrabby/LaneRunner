@@ -815,11 +815,6 @@ function openHowView() {
       <p><b>Save</b> moves Run → <b>Bank</b> instantly (no transaction).</p>
       <p><b>Bank decays</b>: every <b>15 minutes</b>, Bank is reduced by <b>25%</b>.</p>
       <p><b>Coins</b>: 1 coin = <b>10 points</b>. Convert from the Menu.</p>
-      <p><b>Coins</b>100$ giveway every week</p>
-      <p><b>Coins</b>25$ for top 1</p>
-      <p><b>Coins</b>10$ for top 2</p>
-      <p><b>Coins</b>5$ for top 3</p>
-      <p><b>Coins</b>1$ each for top 4-20</p>
       <p><b>Commit</b> is optional and on-chain. It adds your current Bank to your <b>Weekly public leaderboard</b>.</p>
     </div>
     <div class="btnRow">
