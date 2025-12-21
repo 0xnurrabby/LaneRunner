@@ -767,11 +767,9 @@ function openMainMenu() {
       <button class="pill primary" id="btnCommit">Commit Bank → Weekly leaderboard (on-chain)</button>
     </div>
 
-    <div class="fineprint">
-      Contract: ${CONTRACT}<br/>
-      Chain: Base Mainnet (${BASE_CHAIN_ID_HEX})<br/>
-      Builder code: ${BUILDER_CODE}
-    </div>
+    <div class="alertRed">
+  ⚠️ Important: Please commit your bank points before closing the app!
+</div>>
   `,
     "menu"
   );
