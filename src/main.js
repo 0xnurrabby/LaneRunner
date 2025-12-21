@@ -1522,7 +1522,7 @@ if (game.over) {
   ctx.globalAlpha = 0.85 * ease;
   ctx.fillStyle = "rgba(255,255,255,0.78)";
   ctx.font = "600 13px system-ui, -apple-system, Segoe UI, Roboto";
-  ctx.fillText("💾 Tap Save to bank points", boxX + boxW / 2, boxY + yOff + 64);
+  ctx.fillText("Tap 💾Save to Saved points", boxX + boxW / 2, boxY + yOff + 64);
   ctx.fillText("Tap the panel to restart", boxX + boxW / 2, boxY + yOff + 82);
 
   ctx.restore();
