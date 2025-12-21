@@ -538,7 +538,7 @@ function saveRunToBank() {
   profile.bankPoints += game.runScore;
   game.runScore = 0;
   persistProfile();
-  toast("Saved✅");
+  toast("Saved");
 }
 
 function convertCoinsToBank() {
