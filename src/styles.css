@@ -149,29 +149,36 @@ canvas{display:block; width:100%; height:100%;}
   touch-action: pan-y;
   scrollbar-gutter: stable;
 
-  /* Firefox: pretty scrollbar */
+  /* Firefox */
   scrollbar-width: thin;
-  scrollbar-color: rgba(255,130,0,.78) rgba(255,255,255,.06);
+  scrollbar-color: #2d6bff rgba(255,255,255,.06); /* thumb, track */
 }
 
-/* WebKit (Chrome/Safari/iOS): pretty scrollbar */
+/* WebKit (Chrome/Safari/iOS): neon gradient scrollbar */
 #sheet[data-view="boards"] .boardList::-webkit-scrollbar{
   width: 10px;
 }
+
 #sheet[data-view="boards"] .boardList::-webkit-scrollbar-track{
   background: rgba(255,255,255,.06);
   border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
 }
+
 #sheet[data-view="boards"] .boardList::-webkit-scrollbar-thumb{
-  background: linear-gradient(180deg, rgba(255,130,0,.95), rgba(255,77,109,.78));
   border-radius: 999px;
   border: 2px solid rgba(0,0,0,.25);
+  background: linear-gradient(180deg, #00f5d4 0%, #2d6bff 55%, #9b5cff 100%);
+  box-shadow: 0 0 14px rgba(0,245,212,.22);
 }
+
 #sheet[data-view="boards"] .boardList::-webkit-scrollbar-thumb:hover{
-  background: linear-gradient(180deg, rgba(255,170,60,.98), rgba(255,77,109,.88));
+  background: linear-gradient(180deg, #17ffe0 0%, #3b7bff 55%, #b06bff 100%);
+  box-shadow: 0 0 18px rgba(0,245,212,.32);
 }
+
 #sheet[data-view="boards"] .boardList::-webkit-scrollbar-thumb:active{
-  background: linear-gradient(180deg, rgba(255,205,110,1), rgba(255,77,109,1));
+  background: linear-gradient(180deg, #5dffea 0%, #6aa0ff 55%, #c58cff 100%);
 }
 
 /* The last section gets a slightly smaller list on very short screens */
