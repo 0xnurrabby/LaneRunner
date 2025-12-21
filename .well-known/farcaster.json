@@ -12,6 +12,24 @@
     "imageUrl": "https://web3-runner.vercel.app/assets/embed-3x2.png",
     "buttonTitle": "Play",
     "splashImageUrl": "https://web3-runner.vercel.app/assets/splash-200.png",
-    "splashBackgroundColor": "#0f0f14"
+    "splashBackgroundColor": "#0f0f14",
+
+    "subtitle": "Run & earn on Base",
+    "description": "Dodge traffic, collect coins, and save points on-chain. Weekly + all-time leaderboards included.",
+    "primaryCategory": "games",
+    "tags": ["games", "base", "web3", "farcaster", "runner"],
+
+    "tagline": "Dodge. Collect. Earn.",
+    "heroImageUrl": "https://web3-runner.vercel.app/assets/embed-3x2.png",
+    "screenshotUrls": [
+      "https://web3-runner.vercel.app/assets/embed-3x2.png"
+    ],
+
+    "ogTitle": "Web3 Runner",
+    "ogDescription": "Run, collect coins, and save points on Base.",
+    "ogImageUrl": "https://web3-runner.vercel.app/assets/embed-3x2.png",
+
+    "noindex": false
+
   }
 }
