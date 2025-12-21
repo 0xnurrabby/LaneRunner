@@ -15,7 +15,7 @@ import { Attribution } from "https://esm.sh/ox/erc8021";
 // =====================================================
 // HARD INPUTS
 // =====================================================
-const TOP_TITLE = "👈🏻clcik here for $100 reward";
+const TOP_TITLE = "👈🏻clcik here for $99 reward (testing)";
 const HUD_TITLE = "Live Statistics";
 const HOME_URL = "https://web3-runner.vercel.app/";
 
