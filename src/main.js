@@ -15,8 +15,8 @@ import { Attribution } from "https://esm.sh/ox/erc8021";
 // =====================================================
 // HARD INPUTS
 // =====================================================
-const TOP_TITLE = "welcome";
-const HUD_TITLE = "your stats";
+const TOP_TITLE = "Testing game with some testers. For detailed information, click on the three dots and see how it works.";
+const HUD_TITLE = "Live Statistics";
 const HOME_URL = "https://web3-runner.vercel.app/";
 
 const BASE_CHAIN_ID_HEX = "0x2105";
