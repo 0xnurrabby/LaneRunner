@@ -24,6 +24,12 @@ let wasGameOver = false;
 let weekCountdownRAF = 0;
 let weekCountdownActive = false;
 
+function colorizeMinecraftText(str) {
+  // digits + common symbols => red
+  const re = /[0-9$+*\-%=]/g;
+  return String(str).replace(re, (m) => `<span class="mcRed">${m}</span>`);
+}
+
 const BASE_CHAIN_ID_HEX = "0x2105";
 const CONTRACT = "0xB331328F506f2D35125e367A190e914B1b6830cF";
 
