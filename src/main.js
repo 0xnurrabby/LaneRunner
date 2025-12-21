@@ -15,7 +15,8 @@ import { Attribution } from "https://esm.sh/ox/erc8021";
 // =====================================================
 // HARD INPUTS
 // =====================================================
-const APP_NAME = "Web3 Runner";
+const TOP_TITLE = "welcome";
+const HUD_TITLE = "your stats";
 const HOME_URL = "https://web3-runner.vercel.app/";
 
 const BASE_CHAIN_ID_HEX = "0x2105";
@@ -43,7 +44,7 @@ app.innerHTML = `
       <button class="iconBtn" id="menuBtn" aria-label="Menu">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
-      <div class="title">${APP_NAME}</div>
+      <div class="title">${TOP_TITLE}</div>
       <button class="badge" id="statusBadge">Loading…</button>
     </div>
 
@@ -53,7 +54,7 @@ app.innerHTML = `
       </div>
 
       <div class="hud" id="hud">
-        <div class="hudTitle">${APP_NAME}</div>
+        <div class="hudTitle">${HUD_TITLE}</div>
         <div class="hudRow">
           <div>Run: <b id="runScore">0</b></div>
           <div>Coins: <b id="coins">0</b></div>
