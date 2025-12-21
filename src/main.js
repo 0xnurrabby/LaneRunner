@@ -769,7 +769,7 @@ function openMainMenu() {
 
     <div class="alertRed">
   ⚠️ Important: Please commit your bank points before closing the app!
-</div>>
+</div>
   `,
     "menu"
   );
