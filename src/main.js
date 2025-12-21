@@ -764,7 +764,7 @@ function openMainMenu() {
     </div>
 
     <div class="commitWrap">
-      <button class="pill primary" id="btnCommit">Deposit Saved points → Weekly leaderboard</button>
+      <button class="pill primary" id="btnCommit">Deposit Saved points → Weekly leaderboard ( Important )</button>
     </div>
 
     <div class="alertRed">
