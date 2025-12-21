@@ -18,6 +18,8 @@ import { Attribution } from "https://esm.sh/ox/erc8021";
 const TOP_TITLE = "👈🏻clcik here for more info";
 const HUD_TITLE = "Live Statistics";
 const HOME_URL = "https://web3-runner.vercel.app/";
+let crashAnimStart = 0;
+let wasGameOver = false;
 
 const BASE_CHAIN_ID_HEX = "0x2105";
 const CONTRACT = "0xB331328F506f2D35125e367A190e914B1b6830cF";
@@ -1462,23 +1464,75 @@ function render() {
     ctx.restore();
   }
 
-  if (game.over) {
-    ctx.fillStyle = "rgba(0,0,0,0.55)";
-    drawRoundedRect(g.roadX + 16, g.roadY + g.roadH * 0.38, g.roadW - 32, 90, 16);
-    ctx.fill();
-    ctx.fillStyle = "rgba(255,255,255,0.92)";
-    ctx.font = "700 18px system-ui, -apple-system, Segoe UI, Roboto";
-    ctx.fillText("Crash!", g.roadX + 34, g.roadY + g.roadH * 0.38 + 34);
-    ctx.font = "500 14px system-ui, -apple-system, Segoe UI, Roboto";
-    ctx.fillText(
-      "Tap Save to bank points, or tap here to restart",
-      g.roadX + 34,
-      g.roadY + g.roadH * 0.38 + 60
-    );
-    els.c.style.cursor = "pointer";
-  } else {
-    els.c.style.cursor = "default";
-  }
+  // ✅ Premium crash overlay (2-line + animation)
+if (game.over) {
+  // detect first frame of game-over to start animation
+  if (!wasGameOver) crashAnimStart = performance.now();
+  wasGameOver = true;
+
+  const now = performance.now();
+  const t = (now - crashAnimStart) / 1000;
+
+  // appear (0->1), then gentle pulse
+  const appear = Math.min(1, t / 0.28);
+  const ease = 1 - Math.pow(1 - appear, 3);           // easeOutCubic
+  const pulse = 0.5 + 0.5 * Math.sin((t - 0.3) * 2.2);
+  const glow = 0.10 + pulse * 0.18;
+
+  const boxW = g.roadW - 32;
+  const boxH = 100;
+  const boxX = g.roadX + 16;
+  const boxY = g.roadY + g.roadH * 0.38;
+
+  // slight slide-up + tiny scale
+  const yOff = (1 - ease) * 14;
+  const scale = 0.985 + ease * 0.015;
+
+  ctx.save();
+
+  const cx = boxX + boxW / 2;
+  const cy = boxY + boxH / 2;
+  ctx.translate(cx, cy);
+  ctx.scale(scale, scale);
+  ctx.translate(-cx, -cy);
+
+  ctx.globalAlpha = 0.10 + ease * 0.90;
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  drawRoundedRect(boxX, boxY + yOff, boxW, boxH, 18);
+  ctx.fill();
+
+  // premium border glow
+  ctx.globalAlpha = ease;
+  ctx.lineWidth = 1.25;
+  ctx.strokeStyle = `rgba(255,255,255,${0.08 + glow})`;
+  ctx.shadowBlur = 18;
+  ctx.shadowColor = `rgba(255,77,109,${0.18 + glow})`;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // centered 2-line text
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+
+  ctx.globalAlpha = ease;
+  ctx.fillStyle = "rgba(255,255,255,0.94)";
+  ctx.font = "800 20px system-ui, -apple-system, Segoe UI, Roboto";
+  ctx.fillText("Crash!", boxX + boxW / 2, boxY + yOff + 40);
+
+  ctx.globalAlpha = 0.85 * ease;
+  ctx.fillStyle = "rgba(255,255,255,0.78)";
+  ctx.font = "600 13px system-ui, -apple-system, Segoe UI, Roboto";
+  ctx.fillText("Tap Save to bank points", boxX + boxW / 2, boxY + yOff + 64);
+  ctx.fillText("Tap the panel to restart", boxX + boxW / 2, boxY + yOff + 82);
+
+  ctx.restore();
+
+  els.c.style.cursor = "pointer";
+} else {
+  wasGameOver = false;          // reset animation state
+  els.c.style.cursor = "default";
+}
+
 
   ctx.restore();
   renderHud();
