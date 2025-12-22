@@ -344,11 +344,11 @@ canvas{display:block; width:100%; height:100%;}
 
 
 .pill.pillHow .pillIcon{
-  width: 30px;
-  height: 30px;
-  flex: 0 0 30px;
+  width: 35px;
+  height: 35px;
+  flex: 0 0 35px;
   object-fit: contain;
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 4px;
   background: rgba(255,255,255,.06);
   box-shadow: 0 8px 18px rgba(0,0,0,.28);
