@@ -88,7 +88,7 @@ function prefetchWeb3Deps() {
 // =====================================================
 // HARD INPUTS
 // =====================================================
-const TOP_TITLE = "👈🏻Earn 50$ Weekly ( Test )";
+const TOP_TITLE = "👈🏻Click for m0re Dear";
 const HUD_TITLE = "Live Statistics";
 const HOME_URL = "https://web3-runner.vercel.app/";
 
