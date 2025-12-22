@@ -333,11 +333,15 @@ canvas{display:block; width:100%; height:100%;}
   align-items:center;
   justify-content:center;
   gap:10px;
-  font-family: "RebellionSquad", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-  font-size: 18px;
-  letter-spacing: .4px;
-  text-transform: none;
+  font-family:"RebellionSquad", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+  font-size:18px;
+  letter-spacing:.4px;
+  text-transform:none;
+
+  color: #38d36f; /* ✅ green */
+  text-shadow: 0 0 12px rgba(56,211,111,.35); /* ✅ green glow */
 }
+
 
 .pill.pillHow .pillIcon{
   width: 30px;
