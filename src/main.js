@@ -1018,7 +1018,7 @@ function openMainMenu() {
 
 function openHowView() {
   openSheet(
-    "How it works",
+    "Earn & Know how it works",
     `
     <div class="copy">
       <p><b>Play short runs.</b> Your <b>Run</b> points grow while you survive.</p>
