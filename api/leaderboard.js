@@ -12,7 +12,7 @@
 
 const { keccak_256 } = require("js-sha3");
 
-const CONTRACT = "0xB331328F506f2D35125e367A190e914B1b6830cF";
+const CONTRACT = "0xa906482C770b17Fb36363E588ac8E674ba9Ca04B";
 
 // Basenames: L2 Resolver (Base mainnet)
 const BASENAME_L2_RESOLVER_ADDRESS = "0xC6d566A56A1aFf6508b41f6c90ff131615583BCD";
