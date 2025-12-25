@@ -29,8 +29,8 @@ const TOPIC2_ACTION_WEEKLY_ADD =
 
 // Public Base RPCs (avoid Alchemy free-tier block-range limits)
 const RPCS = [
+  "https://rpc.ankr.com/base/9e1676c46f6d37395a7b9b94a66d6ad2915b8343940ab1d84bcbbdd7b185baae",
   "https://mainnet.base.org",
-  "https://base.publicnode.com",
   "https://1rpc.io/base",
   "https://base.llamarpc.com"
 ];
