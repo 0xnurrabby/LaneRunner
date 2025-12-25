@@ -9,7 +9,7 @@
     "name": "Web3 Runner",
     "iconUrl": "https://web3-runner.vercel.app/assets/icon-512.png",
     "homeUrl": "https://web3-runner.vercel.app/",
-    "imageUrl": "https://web3-runner.vercel.app/assets/embed-3x2.png",
+    "imageUrl": "https://web3-runner.vercel.app/assets/embed-3x2.png?v=3",
     "buttonTitle": "Play",
     "splashImageUrl": "https://web3-runner.vercel.app/assets/splash-200.png",
     "splashBackgroundColor": "#0f0f14",
@@ -20,14 +20,14 @@
     "tags": ["games", "base", "web3", "car", "runner"],
 
     "tagline": "Dodge. Collect. Earn.",
-    "heroImageUrl": "https://web3-runner.vercel.app/assets/embed-3x2.png",
+    "heroImageUrl": "https://web3-runner.vercel.app/assets/embed-3x2.png?v=3",
     "screenshotUrls": [
       "https://web3-runner.vercel.app/assets/embed-3x2.png"
     ],
 
     "ogTitle": "Web3 Runner",
     "ogDescription": "Run, collect coins, and save points on Base.",
-    "ogImageUrl": "https://web3-runner.vercel.app/assets/embed-3x2.png?v=1",
+    "ogImageUrl": "https://web3-runner.vercel.app/assets/embed-3x2.png?v=3",
     "noindex": false
   }
 }
