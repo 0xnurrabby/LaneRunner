@@ -27,7 +27,7 @@
 
     "ogTitle": "Web3 Runner",
     "ogDescription": "Run, collect coins, and save points on Base.",
-    "ogImageUrl": "https://web3-runner.vercel.app/assets/embed-3x2.png?v=3",
+    "ogImageUrl": "https://web3-runner.vercel.app/assets/embed-3x2.png",
     "noindex": false
   }
 }
