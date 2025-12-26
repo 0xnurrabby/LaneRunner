@@ -1,0 +1,14 @@
+{
+  "name": "lane-runner",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "@farcaster/miniapp-node": "^0.1.9",
+    "@upstash/redis": "^1.34.3",
+    "@vercel/kv": "^1.0.1",
+    "js-sha3": "^0.9.3"
+  },
+  "engines": {
+    "node": ">=22.11.0"
+  }
+}
