@@ -90,7 +90,7 @@ let MEM_RESP_AT = 0;
 // Tunables
 const CACHE_TTL_SECONDS = 60 * 60; // 1 hour for resp; cron/refresh keeps it hot
 const STATE_TTL_SECONDS = 60 * 60 * 24 * 21; // 3 weeks
-const MAX_TOP = 50;   // leaderboard UI size
+const MAX_TOP = 100;   // leaderboard UI size
 const PRUNE_KEEP = 250; // keep top N in state to keep KV value small
 const MAX_SERVERLESS_MS = 8500; // try to finish before hard limits
 
